@@ -197,13 +197,33 @@
         function derrumbe(pisoFalla) {
             perdido = true;
             document.getElementById('game-over').style.display = 'flex';
-            for (let f = pisoFalla; f < torre.length; f++) {
-                torre[f].forEach(b => {
-                    b.position.y -= 5;
-                    b.rotation.x += 0.5;
-                    b.rotation.z += 0.3;
-                });
-            }
+
+            torre.flat().forEach(b => {
+                if (!b.userData.activo) return;
+
+                 // Calcula una direccion de explosion desde el centro de la torre
+                const dirX = b.position.x + (Math.random() - 0.5) * 10;
+                const dirZ = b.position.z + (Math.random() - 0.5) * 10;
+        
+                // Animacion de caída
+                const caidaRapida = () => {
+                    if (b.position.y > -20) {
+                        b.position.y -= 0.5; // Velocidad de caida
+                        b.position.x += (dirX - b.position.x) * 0.05; // Se expanden hacia afuera
+                        b.position.z += (dirZ - b.position.z) * 0.05;
+                
+                        //Para que funcione en los 3 ejes
+                        b.rotation.x += 0.1;
+                        b.rotation.y += 0.1;
+                        b.rotation.z += 0.1;
+                
+                        requestAnimationFrame(caidaRapida);
+                    } else {
+                        b.visible = false; // Para que desaparezcan
+                    }
+                };
+                caidaRapida();
+            });
         }
 
         function onWindowResize() {
