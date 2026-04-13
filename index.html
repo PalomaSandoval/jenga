@@ -78,8 +78,9 @@
                     const edges = new THREE.EdgesGeometry(geo);
                     const line = new THREE.LineSegments(
                         edges, 
-                        new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }) // Contorno negro
+                        new THREE.LineBasicMaterial({ color: 0x000000 })
                     );
+                    line.raycast = () => {};   
                     mesh.add(line); 
                     const offset = (i - 1) * 1.05;
                     
