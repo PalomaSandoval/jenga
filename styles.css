@@ -1,46 +1,111 @@
-body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #050505; color: white; }
-
-#ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-.legend { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border: 1px solid #f1c40f; pointer-events: auto; }
-
-#modal-pregunta {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100;
+/* Reseteo general */
+body, html { 
+    margin: 0; 
+    padding: 0; 
+    width: 100%; 
+    height: 100%; 
+    overflow: hidden; 
+    background: #050505; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    color: white; 
 }
 
+canvas { 
+    display: block; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+#ui { 
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    z-index: 10; 
+    pointer-events: none;
+}
+
+.legend { 
+    background: rgba(0, 0, 0, 0.85); 
+    padding: 15px; 
+    border-radius: 10px; 
+    border: 1px solid #f1c40f; 
+    pointer-events: auto;
+}
+
+#modal-pregunta, #setup-menu, #game-over, #modal-turno {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 100;
+}
+
+#setup-menu { background: #050505; z-index: 300; }
+#modal-pregunta { background: rgba(0, 0, 0, 0.9); }
+#modal-turno { background: rgba(0, 0, 0, 0.5); pointer-events: none; }
+#game-over { background: rgba(231, 76, 60, 0.9); flex-direction: column; }
+
 .modal-content {
-    background: white; color: #333; padding: 30px; border-radius: 15px;
-    max-width: 450px; width: 90%; text-align: center;
+    background: white; 
+    color: #333; 
+    padding: 30px; 
+    border-radius: 15px;
+    max-width: 450px; 
+    width: 90%; 
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .option-btn {
-    display: block; width: 100%; margin: 10px 0; padding: 12px;
-    cursor: pointer; border: 2px solid #ddd; border-radius: 8px;
-    background: #f9f9f9; font-size: 16px; font-weight: bold;
+    display: block; 
+    width: 100%; 
+    margin: 10px 0; 
+    padding: 12px;
+    cursor: pointer; 
+    border: 2px solid #ddd; 
+    border-radius: 8px;
+    background: #f9f9f9; 
+    font-size: 16px; 
+    font-weight: bold;
+    transition: all 0.2s ease;
 }
 
-.option-btn:hover { background: #3498db; color: white; }
-
-.hidden { display: none !important; }
-
-#game-over {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(231, 76, 60, 0.95); display: none; flex-direction: column; 
-    justify-content: center; align-items: center; z-index: 200;
+.option-btn:hover { 
+    background: #3498db; 
+    color: white; 
+    border-color: #2980b9;
 }
 
-#setup-menu {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #050505; display: flex; justify-content: center; 
-    align-items: center; z-index: 300;
+.input-nombre {
+    display: block; 
+    width: 90%; 
+    margin: 10px auto; 
+    padding: 10px;
+    border-radius: 5px; 
+    border: 1px solid #ccc;
 }
 
-#inputs-nombres input {
-    display: block; width: 100%; margin: 10px 0;
-    padding: 8px; border-radius: 5px; border: 1px solid #ccc;
+#btn-comenzar, #game-over button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
-.transition {
-    background: #f1c40f !important;
-    color: #000 !important;
+.transition { 
+    background: #f1c40f !important; 
+    color: #000 !important; 
+    border: 4px solid #000;
 }
+
+/* Removido el !important para evitar bloqueos */
+.hidden { display: none; }

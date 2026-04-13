@@ -1,6 +1,3 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
 const temas = [
     { n: "CMMI", c: 0xe74c3c }, 
     { n: "Moprosoft", c: 0xf1c40f }, 
@@ -9,7 +6,7 @@ const temas = [
 ];
 
 let scene, camera, renderer, controls, raycaster, mouse;
-let torre = [], bancoPreguntas = [], score = 0, perdido = false;
+let torre = [], score = 0, perdido = false;
 let piezaSeleccionada = null, posicionInicialPieza = new THREE.Vector3();
 let jugadores = [];
 let indiceTurno = 0;
@@ -17,59 +14,44 @@ let plane = new THREE.Plane();
 let pNormal = new THREE.Vector3();
 let pIntersect = new THREE.Vector3();
 let pOffset = new THREE.Vector3();
+let bloqueado = false; 
 
-// Configuración de la pantalla de inicio
 document.addEventListener('DOMContentLoaded', () => {
     const numInput = document.getElementById('num-jugadores');
     const containerNombres = document.getElementById('inputs-nombres');
     const btnComenzar = document.getElementById('btn-comenzar');
 
     const actualizarInputs = () => {
+        if(!containerNombres) return;
         containerNombres.innerHTML = '';
-        for (let i = 1; i <= numInput.value; i++) {
+        let cantidad = numInput ? parseInt(numInput.value) : 2;
+        for (let i = 1; i <= cantidad; i++) {
             const input = document.createElement('input');
             input.type = 'text';
             input.placeholder = `Nombre Jugador ${i}`;
-            input.required = true;
             input.className = 'input-nombre';
             containerNombres.appendChild(input);
         }
     };
 
-    numInput.addEventListener('change', actualizarInputs);
-    actualizarInputs(); // Carga inicial
+    if(numInput) numInput.addEventListener('change', actualizarInputs);
+    actualizarInputs();
 
-    btnComenzar.onclick = () => {
-        const inputs = document.querySelectorAll('.input-nombre');
-        jugadores = Array.from(inputs).map(inp => ({
-            nombre: inp.value || `Jugador ${jugadores.length + 1}`,
-            score: 0
-        }));
-
-        if (jugadores.length > 0) {
+    if(btnComenzar) {
+        btnComenzar.onclick = () => {
+            const inputs = document.querySelectorAll('.input-nombre');
+            jugadores = Array.from(inputs).map((inp, i) => ({
+                nombre: inp.value || `Jugador ${i + 1}`,
+                score: 0
+            }));
             document.getElementById('setup-menu').style.display = 'none';
             document.getElementById('jugador-actual').innerText = jugadores[indiceTurno].nombre;
-            init(); // Arranca el motor 3D
-        }
-    };
+            init(); 
+        };
+    }
 });
 
-async function cargarPreguntas() {
-    // Solo intentamos cargar lo que existe para evitar errores en consola
-    const archivos = ['moprosoft.json', 'tsp.json']; 
-    for (const archivo of archivos) {
-        try {
-            const res = await fetch(archivo);
-            if (res.ok) {
-                const data = await res.json();
-                bancoPreguntas = bancoPreguntas.concat(data);
-            }
-        } catch (e) { console.warn("Esperando archivo: " + archivo); }
-    }
-}
-
 function init() {
-    cargarPreguntas();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x050505);
     
@@ -80,11 +62,11 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    // Dejamos el click izquierdo para arrastrar
-    controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }; 
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 5, 0); 
+    controls.update();
+    
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-
     const geo = new THREE.BoxGeometry(3, 0.85, 1); 
 
     for (let f = 0; f < 15; f++) {
@@ -93,18 +75,22 @@ function init() {
             const t = temas[Math.floor(Math.random()*4)];
             const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: t.c }));
             const edges = new THREE.EdgesGeometry(geo);
-            // El color del contorno de las piezas BLANCO: 0xffffff NEGRO: 0x000000
             const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
             line.raycast = () => {}; 
             mesh.add(line); 
 
             const offset = (i - 1) * 1.05;
-            if (f % 2 === 0) mesh.position.set(0, f * 0.9, offset);
-            else { mesh.position.set(offset, f * 0.9, 0); mesh.rotation.y = Math.PI/2; }
+            if (f % 2 === 0) {
+                mesh.position.set(0, f * 0.9, offset);
+                mesh.userData.axis = 'x';
+            } else { 
+                mesh.position.set(offset, f * 0.9, 0); 
+                mesh.rotation.y = Math.PI/2; 
+                mesh.userData.axis = 'z';
+            }
             
-            // Aqui es para que algunas piezas random sean mas pesadas
-            const friccion = Math.random() * (0.9 - 0.05) + 0.05;
-            mesh.userData = { activo: true, axis: (f % 2 === 0 ? 'x' : 'z'), tema: t.n, friccion: friccion };
+            mesh.userData.activo = true;
+            mesh.userData.tema = t.n;
             scene.add(mesh);
             piso.push(mesh);
         }
@@ -113,25 +99,30 @@ function init() {
 
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
-    window.addEventListener('pointerdown', onPointerDown);
+    // Importante: escuchamos los eventos en el canvas para no interferir con el HTML
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('resize', onWindowResize);
     animate();
 }
 
-// Esta función es para agarrar las piezas con el clic
-function onPointerDown(e) {
-    const modal = document.getElementById('modal-pregunta');
-    if (perdido || e.button !== 0 || modal.style.display === 'flex') return;
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
 
+function onPointerDown(e) {
+    if (perdido || bloqueado || e.button !== 0) return;
+    
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     
     const hits = raycaster.intersectObjects(torre.flat());
-    if (hits.length > 0) {
+    if (hits.length > 0 && hits[0].object.userData.activo) {
         piezaSeleccionada = hits[0].object;
-        // Aqui se guarda la posicion de la pieza mientras la van jalando y la sueltan
         posicionInicialPieza.copy(piezaSeleccionada.position); 
         controls.enabled = false;
         
@@ -144,61 +135,58 @@ function onPointerDown(e) {
     }
 }
 
-// Esta es la función apra arrastrar las piezas mantiendo el clic con el mouse y despues arrastrando
 function onPointerMove(e) {
-    if (!piezaSeleccionada || perdido) return;
+    if (!piezaSeleccionada || bloqueado) return;
 
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
     if (raycaster.ray.intersectPlane(plane, pIntersect)) {
-        // con esta es para ver cuanto se movio la pueza de la posicion original
-        const mouseMove = pIntersect.sub(pOffset);
-        
+        const move = pIntersect.clone().sub(pOffset);
         if (piezaSeleccionada.userData.axis === 'x') {
-            const deltaX = mouseMove.x - posicionInicialPieza.x;
-            piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
+            piezaSeleccionada.position.x = move.x;
+            piezaSeleccionada.position.z = posicionInicialPieza.z;
         } else {
-            const deltaZ = mouseMove.z - posicionInicialPieza.z;
-            piezaSeleccionada.position.z = posicionInicialPieza.z + (deltaZ * piezaSeleccionada.userData.friccion);
+            piezaSeleccionada.position.z = move.z;
+            piezaSeleccionada.position.x = posicionInicialPieza.x;
         }
-    }
-
-    // aqui es para que se le asigne una sensibilidad dentro de un rango al azar a cada pieza
-    const dist = (piezaSeleccionada.userData.axis === 'x') ? 
-                 Math.abs(piezaSeleccionada.position.x) : 
-                 Math.abs(piezaSeleccionada.position.z);
-
-    // 2.2 de sensibilidad para que no sea feo con piezas pesadas
-    if (dist > 2.2) {
-        const p = piezaSeleccionada;
-        piezaSeleccionada = null; 
-        lanzarCuestionario(p.userData.tema, p);
+        piezaSeleccionada.position.y = posicionInicialPieza.y;
     }
 }
 
-//Esta es por si llegan a soltar el mouse
 function onPointerUp() {
-    if (piezaSeleccionada) {
-        // Si soltamos la pieza a medio camino, regresa
+    // Si ya estamos en una pregunta o no hay pieza, no hacemos nada
+    if (bloqueado || !piezaSeleccionada) {
+        if (!bloqueado) controls.enabled = true;
+        return;
+    }
+
+    const dist = piezaSeleccionada.position.distanceTo(posicionInicialPieza);
+    
+    if (dist > 1.8) {
+        bloqueado = true;
+        const p = piezaSeleccionada;
+        piezaSeleccionada = null; // Limpiamos la referencia inmediatamente para evitar duplicados
+        lanzarCuestionario(p.userData.tema, p);
+    } else {
         piezaSeleccionada.position.copy(posicionInicialPieza);
         piezaSeleccionada = null;
+        controls.enabled = true;
     }
-    controls.enabled = true;
 }
 
-function lanzarCuestionario(temaNombre, pieza) {
-    const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === temaNombre.toUpperCase());
-    
-    // Si no hay preguntas del tema en los JSON, usamos una genérica
-    const pregunta = filtradas.length > 0 ? 
-        filtradas[Math.floor(Math.random() * filtradas.length)] : 
-        { q: `Pregunta de desafío sobre ${temaNombre}`, options: ["Opción A", "Opción B", "Opción C"], correct: 0, tema: temaNombre };
+function lanzarCuestionario(tema, pieza) {
+    const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === tema.toUpperCase());
+    const pregunta = filtradas[Math.floor(Math.random() * filtradas.length)];
     
     const modal = document.getElementById('modal-pregunta');
+    const modalContent = modal.querySelector('.modal-content');
+    
     modal.style.display = 'flex';
-
+    modalContent.style.backgroundColor = 'white'; 
+    modalContent.style.color = '#333';
+    
     document.getElementById('tema-titulo').innerText = pregunta.tema;
     document.getElementById('texto-pregunta').innerText = pregunta.q;
     
@@ -209,22 +197,46 @@ function lanzarCuestionario(temaNombre, pieza) {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.innerText = opt;
-        btn.onclick = () => {
-            modal.style.display = 'none';
-            // y esta si dejan de mover la pieza
-            pieza.visible = false;
-            pieza.userData.activo = false;
-            pieza.position.y = -500;
-            score++;
-            document.getElementById('score').innerText = score;
-            
+        btn.onclick = (e) => {
+            e.stopPropagation(); // Evita que el clic llegue al juego
+            const botones = container.querySelectorAll('button');
+            botones.forEach(b => b.style.pointerEvents = 'none');
+
             if (i === pregunta.correct) {
-                cambiarTurno();
+                // BIEN: La pieza regresa (Comodín) y pasa el turno
+                modalContent.style.backgroundColor = '#2ecc71';
+                modalContent.style.color = 'white';
+                
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    pieza.position.copy(posicionInicialPieza);
+                    bloqueado = false;
+                    controls.enabled = true;
+                    cambiarTurno();
+                }, 1500);
+
             } else {
-                alert(`¡Incorrecto! ${jugadores[indiceTurno].nombre}, debes intentar con otra pieza.`);
-                controls.enabled = true;
+                // MAL: La pieza se quita y el jugador sigue intentando
+                modalContent.style.backgroundColor = '#e74c3c';
+                modalContent.style.color = 'white';
+                
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    pieza.visible = false;
+                    pieza.userData.activo = false;
+                    pieza.position.y = -500;
+                    score++;
+                    document.getElementById('score').innerText = score;
+                    
+                    bloqueado = false;
+                    controls.enabled = true;
+                    validarEstabilidad();
+                    
+                    if(!perdido) {
+                        alert("Incorrecto. La pieza se ha perdido. Debes intentar con otra hasta acertar.");
+                    }
+                }, 1500);
             }
-            validarEstabilidad();
         };
         container.appendChild(btn);
     });
@@ -232,69 +244,28 @@ function lanzarCuestionario(temaNombre, pieza) {
 
 function cambiarTurno() {
     indiceTurno = (indiceTurno + 1) % jugadores.length;
-    const proximoJugador = jugadores[indiceTurno].nombre;
-    
-    const modalTurno = document.getElementById('modal-turno');
-    const anuncio = document.getElementById('anuncio-jugador');
-    
-    anuncio.innerText = `¡Correcto! Es turno de: ${proximoJugador}`;
-    modalTurno.style.display = 'flex';
+    const proximo = jugadores[indiceTurno].nombre;
+    document.getElementById('anuncio-jugador').innerText = `Turno de: ${proximo}`;
+    document.getElementById('modal-turno').style.display = 'flex';
     
     setTimeout(() => {
-        modalTurno.style.display = 'none';
-        document.getElementById('jugador-actual').innerText = proximoJugador;
-        controls.enabled = true;
-    }, 2000); // 2 segundos de anuncio
+        document.getElementById('modal-turno').style.display = 'none';
+        document.getElementById('jugador-actual').innerText = proximo;
+    }, 1200);
 }
 
 function validarEstabilidad() {
     for (let f = 0; f < torre.length - 1; f++) {
-        const activos = torre[f].filter(b => b.userData.activo).length;
-        if (activos === 0) {
-            derrumbe(f);
-            break;
+        const activas = torre[f].filter(b => b.userData.activo).length;
+        if (activas === 0) {
+            perdido = true;
+            document.getElementById('game-over').style.display = 'flex';
         }
     }
-}
-
-function derrumbe(pisoFalla) {
-    perdido = true;
-    document.getElementById('game-over').style.display = 'flex';
-
-    torre.flat().forEach(b => {
-        if (!b.userData.activo) return;
-
-        // Calcula una direccion de explosion desde el centro de la torre
-        const dirX = (Math.random() - 0.5) * 15;
-        const dirZ = (Math.random() - 0.5) * 15;
-        
-        // Animacion de caída
-        const caidaRapida = () => {
-            if (b.position.y > -20) {
-                b.position.y -= 0.4; // Velocidad de caida
-                b.position.x += dirX * 0.01; // Se expanden hacia afuera
-                b.position.z += dirZ * 0.01;
-                
-                //Para que funcione en los 3 ejes
-                b.rotation.x += 0.1;
-                b.rotation.y += 0.05;
-                b.rotation.z += 0.1;
-                
-                requestAnimationFrame(caidaRapida);
-            }
-        };
-        caidaRapida();
-    });
-}
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
     requestAnimationFrame(animate);
     if (controls) controls.update(); 
-    if (renderer && scene && camera) renderer.render(scene, camera);
+    renderer.render(scene, camera);
 }
