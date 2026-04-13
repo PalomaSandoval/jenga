@@ -1,0 +1,22 @@
+[
+  { "q": "¿Qué significa TSP?", "options": ["Team Software Process", "Total Software Process", "Task System Process"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Quién creó TSP?", "options": ["Watts Humphrey", "Bill Gates", "Alan Turing"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Cuál es el enfoque de TSP?", "options": ["Trabajo en equipo", "Trabajo individual", "Solo gerencia"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué es el Launch?", "options": ["Lanzamiento de cohetes", "Reunión de planeación del equipo", "Cena de fin de proyecto"], "correct": 1, "tema": "TSP" },
+  { "q": "¿Qué es un equipo autodirigido?", "options": ["Equipo sin reglas", "Equipo que planea y decide unido", "Equipo con robot"], "correct": 1, "tema": "TSP" },
+  { "q": "¿Cuántas fases tiene el Launch?", "options": ["4", "9", "3"], "correct": 1, "tema": "TSP" },
+  { "q": "¿Qué rol gestiona el tiempo?", "options": ["Líder de Planeación", "Líder de Calidad", "Líder de Soporte"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué rol monitorea los defectos?", "options": ["Líder de Calidad", "Desarrollador", "Líder de Soporte"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué hace el Líder de Soporte?", "options": ["Configuración y herramientas", "Hacer café", "Atención al cliente"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué hace el Líder de Proyecto?", "options": ["Dirige y motiva al equipo", "Escribe todo el código", "No hace nada"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Cada cuánto hay reuniones de estado?", "options": ["Cada mes", "Cada semana", "Cada año"], "correct": 1, "tema": "TSP" },
+  { "q": "¿Qué es un Ciclo en TSP?", "options": ["Iteración de desarrollo", "Giro de rueda", "Vida del programador"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué busca el Postmortem?", "options": ["Analizar datos finales", "Culpar a alguien", "Ver una película"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Cuál es la meta principal de TSP?", "options": ["Calidad y cumplimiento", "Rapidez extrema", "Bajo costo"], "correct": 0, "tema": "TSP" },
+  { "q": "¿TSP requiere PSP?", "options": ["Sí", "No", "Opcional"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué es la 'Estrategia' en TSP?", "options": ["Cómo se abordará el diseño", "Un juego de mesa", "Engañar al cliente"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué es el Plan de Calidad?", "options": ["Metas de defectos", "Solo probar al final", "Documento de 500 hojas"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué es el registro de riesgos?", "options": ["Identificar posibles fallos", "Seguro médico", "Lista de precios"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Quién toma las decisiones técnicas?", "options": ["El equipo", "Solo el jefe", "El cliente"], "correct": 0, "tema": "TSP" },
+  { "q": "¿Qué mide el TSP?", "options": ["Productividad y calidad grupal", "Solo líneas de código", "Horas de sueño"], "correct": 0, "tema": "TSP" }
+]
