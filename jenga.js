@@ -11,13 +11,48 @@ const temas = [
 let scene, camera, renderer, controls, raycaster, mouse;
 let torre = [], bancoPreguntas = [], score = 0, perdido = false;
 let piezaSeleccionada = null, posicionInicialPieza = new THREE.Vector3();
-let jugadorActual = 1;
-
-// Variables para el arrastre matemático
+let jugadores = [];
+let indiceTurno = 0;
 let plane = new THREE.Plane();
 let pNormal = new THREE.Vector3();
 let pIntersect = new THREE.Vector3();
 let pOffset = new THREE.Vector3();
+
+// Configuración de la pantalla de inicio
+document.addEventListener('DOMContentLoaded', () => {
+    const numInput = document.getElementById('num-jugadores');
+    const containerNombres = document.getElementById('inputs-nombres');
+    const btnComenzar = document.getElementById('btn-comenzar');
+
+    const actualizarInputs = () => {
+        containerNombres.innerHTML = '';
+        for (let i = 1; i <= numInput.value; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Nombre Jugador ${i}`;
+            input.required = true;
+            input.className = 'input-nombre';
+            containerNombres.appendChild(input);
+        }
+    };
+
+    numInput.addEventListener('change', actualizarInputs);
+    actualizarInputs(); // Carga inicial
+
+    btnComenzar.onclick = () => {
+        const inputs = document.querySelectorAll('.input-nombre');
+        jugadores = Array.from(inputs).map(inp => ({
+            nombre: inp.value || `Jugador ${jugadores.length + 1}`,
+            score: 0
+        }));
+
+        if (jugadores.length > 0) {
+            document.getElementById('setup-menu').style.display = 'none';
+            document.getElementById('jugador-actual').innerText = jugadores[indiceTurno].nombre;
+            init(); // Arranca el motor 3D
+        }
+    };
+});
 
 async function cargarPreguntas() {
     // Solo intentamos cargar lo que existe para evitar errores en consola
@@ -46,7 +81,9 @@ function init() {
     document.body.appendChild(renderer.domElement);
 
     controls = new OrbitControls(camera, renderer.domElement);
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    // Dejamos el click izquierdo para arrastrar
+    controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }; 
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
     const geo = new THREE.BoxGeometry(3, 0.85, 1); 
 
@@ -56,6 +93,7 @@ function init() {
             const t = temas[Math.floor(Math.random()*4)];
             const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: t.c }));
             const edges = new THREE.EdgesGeometry(geo);
+            // El color del contorno de las piezas BLANCO: 0xffffff NEGRO: 0x000000
             const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
             line.raycast = () => {}; 
             mesh.add(line); 
@@ -64,7 +102,9 @@ function init() {
             if (f % 2 === 0) mesh.position.set(0, f * 0.9, offset);
             else { mesh.position.set(offset, f * 0.9, 0); mesh.rotation.y = Math.PI/2; }
             
-            mesh.userData = { activo: true, axis: (f % 2 === 0 ? 'x' : 'z'), tema: t.n };
+            // Aqui es para que algunas piezas random sean mas pesadas
+            const friccion = Math.random() * (0.9 - 0.05) + 0.05;
+            mesh.userData = { activo: true, axis: (f % 2 === 0 ? 'x' : 'z'), tema: t.n, friccion: friccion };
             scene.add(mesh);
             piso.push(mesh);
         }
@@ -79,9 +119,10 @@ function init() {
     animate();
 }
 
+// Esta función es para agarrar las piezas con el clic
 function onPointerDown(e) {
     const modal = document.getElementById('modal-pregunta');
-    if (perdido || modal.style.display === 'flex') return;
+    if (perdido || e.button !== 0 || modal.style.display === 'flex') return;
 
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -90,7 +131,8 @@ function onPointerDown(e) {
     const hits = raycaster.intersectObjects(torre.flat());
     if (hits.length > 0) {
         piezaSeleccionada = hits[0].object;
-        posicionInicialPieza.copy(piezaSeleccionada.position); // Guardar por si hay que resetear
+        // Aqui se guarda la posicion de la pieza mientras la van jalando y la sueltan
+        posicionInicialPieza.copy(piezaSeleccionada.position); 
         controls.enabled = false;
         
         pNormal.copy(camera.position).normalize();
@@ -102,43 +144,41 @@ function onPointerDown(e) {
     }
 }
 
+// Esta es la función apra arrastrar las piezas mantiendo el clic con el mouse y despues arrastrando
 function onPointerMove(e) {
-    if (!piezaSeleccionada) return;
+    if (!piezaSeleccionada || perdido) return;
 
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
     if (raycaster.ray.intersectPlane(plane, pIntersect)) {
-        const newPos = pIntersect.sub(pOffset);
+        // con esta es para ver cuanto se movio la pueza de la posicion original
+        const mouseMove = pIntersect.sub(pOffset);
+        
         if (piezaSeleccionada.userData.axis === 'x') {
-            piezaSeleccionada.position.x = newPos.x;
+            const deltaX = mouseMove.x - posicionInicialPieza.x;
+            piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
         } else {
-            piezaSeleccionada.position.z = newPos.z;
+            const deltaZ = mouseMove.z - posicionInicialPieza.z;
+            piezaSeleccionada.position.z = posicionInicialPieza.z + (deltaZ * piezaSeleccionada.userData.friccion);
         }
     }
 
+    // aqui es para que se le asigne una sensibilidad dentro de un rango al azar a cada pieza
     const dist = (piezaSeleccionada.userData.axis === 'x') ? 
                  Math.abs(piezaSeleccionada.position.x) : 
                  Math.abs(piezaSeleccionada.position.z);
 
-    if (dist > 2.0) {
+    // 2.2 de sensibilidad para que no sea feo con piezas pesadas
+    if (dist > 2.2) {
         const p = piezaSeleccionada;
-        const tienePreguntas = bancoPreguntas.some(bp => bp.tema.toUpperCase() === p.userData.tema.toUpperCase());
-
-        if (tienePreguntas) {
-            piezaSeleccionada = null; 
-            lanzarCuestionario(p.userData.tema, p);
-        } else {
-            // Si el tema no tiene JSON, la pieza regresa a su lugar y no se puede sacar
-            alert("Aún no hay preguntas cargadas para el tema: " + p.userData.tema);
-            p.position.copy(posicionInicialPieza);
-            piezaSeleccionada = null;
-            controls.enabled = true;
-        }
+        piezaSeleccionada = null; 
+        lanzarCuestionario(p.userData.tema, p);
     }
 }
 
+//Esta es por si llegan a soltar el mouse
 function onPointerUp() {
     if (piezaSeleccionada) {
         // Si soltamos la pieza a medio camino, regresa
@@ -150,63 +190,111 @@ function onPointerUp() {
 
 function lanzarCuestionario(temaNombre, pieza) {
     const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === temaNombre.toUpperCase());
-    const p = filtradas[Math.floor(Math.random() * filtradas.length)];
+    
+    // Si no hay preguntas del tema en los JSON, usamos una genérica
+    const pregunta = filtradas.length > 0 ? 
+        filtradas[Math.floor(Math.random() * filtradas.length)] : 
+        { q: `Pregunta de desafío sobre ${temaNombre}`, options: ["Opción A", "Opción B", "Opción C"], correct: 0, tema: temaNombre };
     
     const modal = document.getElementById('modal-pregunta');
     modal.style.display = 'flex';
-    modal.classList.remove('hidden');
 
-    document.getElementById('tema-titulo').innerText = p.tema;
-    document.getElementById('texto-pregunta').innerText = p.q;
+    document.getElementById('tema-titulo').innerText = pregunta.tema;
+    document.getElementById('texto-pregunta').innerText = pregunta.q;
     
     const container = document.getElementById('opciones-container');
     container.innerHTML = '';
 
-    p.options.forEach((opt, i) => {
+    pregunta.options.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.innerText = opt;
         btn.onclick = () => {
             modal.style.display = 'none';
-            modal.classList.add('hidden');
-            
-            // La pieza se elimina siempre que sale
+            // y esta si dejan de mover la pieza
             pieza.visible = false;
             pieza.userData.activo = false;
             pieza.position.y = -500;
             score++;
             document.getElementById('score').innerText = score;
-
-            if (i === p.correct) {
-                alert("¡Correcto! Turno del Jugador " + (jugadorActual === 1 ? "2" : "1"));
-                jugadorActual = (jugadorActual % 2) + 1;
-                document.getElementById('jugador-actual').innerText = jugadorActual;
+            
+            if (i === pregunta.correct) {
+                cambiarTurno();
             } else {
-                alert("¡Incorrecto! Jugador " + jugadorActual + ", debes sacar otra pieza.");
-                // NO se cambia el jugadorActual
+                alert(`¡Incorrecto! ${jugadores[indiceTurno].nombre}, debes intentar con otra pieza.`);
+                controls.enabled = true;
             }
             validarEstabilidad();
-            controls.enabled = true;
         };
         container.appendChild(btn);
     });
 }
 
+function cambiarTurno() {
+    indiceTurno = (indiceTurno + 1) % jugadores.length;
+    const proximoJugador = jugadores[indiceTurno].nombre;
+    
+    const modalTurno = document.getElementById('modal-turno');
+    const anuncio = document.getElementById('anuncio-jugador');
+    
+    anuncio.innerText = `¡Correcto! Es turno de: ${proximoJugador}`;
+    modalTurno.style.display = 'flex';
+    
+    setTimeout(() => {
+        modalTurno.style.display = 'none';
+        document.getElementById('jugador-actual').innerText = proximoJugador;
+        controls.enabled = true;
+    }, 2000); // 2 segundos de anuncio
+}
+
 function validarEstabilidad() {
     for (let f = 0; f < torre.length - 1; f++) {
-        if (torre[f].filter(b => b.userData.activo).length === 0) {
-            perdido = true;
-            const go = document.getElementById('game-over');
-            go.style.display = 'flex';
-            go.classList.remove('hidden');
+        const activos = torre[f].filter(b => b.userData.activo).length;
+        if (activos === 0) {
+            derrumbe(f);
+            break;
         }
     }
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
+function derrumbe(pisoFalla) {
+    perdido = true;
+    document.getElementById('game-over').style.display = 'flex';
+
+    torre.flat().forEach(b => {
+        if (!b.userData.activo) return;
+
+        // Calcula una direccion de explosion desde el centro de la torre
+        const dirX = (Math.random() - 0.5) * 15;
+        const dirZ = (Math.random() - 0.5) * 15;
+        
+        // Animacion de caída
+        const caidaRapida = () => {
+            if (b.position.y > -20) {
+                b.position.y -= 0.4; // Velocidad de caida
+                b.position.x += dirX * 0.01; // Se expanden hacia afuera
+                b.position.z += dirZ * 0.01;
+                
+                //Para que funcione en los 3 ejes
+                b.rotation.x += 0.1;
+                b.rotation.y += 0.05;
+                b.rotation.z += 0.1;
+                
+                requestAnimationFrame(caidaRapida);
+            }
+        };
+        caidaRapida();
+    });
 }
 
-init();
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if (controls) controls.update(); 
+    if (renderer && scene && camera) renderer.render(scene, camera);
+}
