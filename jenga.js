@@ -1,320 +1,260 @@
-const temas = [
-    { n: "CMMI", c: 0xe74c3c }, 
-    { n: "Moprosoft", c: 0xf1c40f }, 
-    { n: "PSP", c: 0x3498db }, 
-    { n: "TSP", c: 0x2ecc71 }
+const datosRuleta = [
+    { tema: "CMMI", color: "#e74c3c" },
+    { tema: "MOPROSOFT", color: "#f1c40f" },
+    { tema: "PSP", color: "#3498db" },
+    { tema: "TSP", color: "#2ecc71" }
 ];
 
+const coloresTorre = [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71];
 let scene, camera, renderer, controls, raycaster, mouse;
 let torre = [], score = 0, perdido = false;
-let piezaSeleccionada = null;
-let posicionInicialPieza = new THREE.Vector3(); 
-let jugadores = [];
-let indiceTurno = 0;
-let plane = new THREE.Plane();
-let pNormal = new THREE.Vector3();
-let pIntersect = new THREE.Vector3();
-let pOffset = new THREE.Vector3();
-let bloqueado = false; 
+let piezaSeleccionada = null, necesitaSacarFicha = false;
+let posicionAlClick = new THREE.Vector3(); 
+let jugadores = [], indiceTurno = 0;
+let plane = new THREE.Plane(), pNormal = new THREE.Vector3(), pIntersect = new THREE.Vector3(), pOffset = new THREE.Vector3();
+let bloqueado = true;
 
 document.addEventListener('DOMContentLoaded', () => {
     const numInput = document.getElementById('num-jugadores');
     const containerNombres = document.getElementById('inputs-nombres');
     const btnComenzar = document.getElementById('btn-comenzar');
+    const btnGirar = document.getElementById('btn-girar');
 
     const actualizarInputs = () => {
-        if(!containerNombres) return;
         containerNombres.innerHTML = '';
-        let cantidad = numInput ? parseInt(numInput.value) : 2;
+        let cantidad = parseInt(numInput.value);
         for (let i = 1; i <= cantidad; i++) {
             const input = document.createElement('input');
-            input.type = 'text';
-            input.placeholder = `Nombre Jugador ${i}`;
-            input.className = 'input-nombre';
-            containerNombres.appendChild(input);
+            input.type = 'text'; input.placeholder = `Nombre Jugador ${i}`;
+            input.className = 'input-nombre'; containerNombres.appendChild(input);
         }
     };
 
-    if(numInput) numInput.addEventListener('change', actualizarInputs);
+    numInput.addEventListener('change', actualizarInputs);
     actualizarInputs();
 
-    if(btnComenzar) {
-        btnComenzar.onclick = () => {
-            const inputs = document.querySelectorAll('.input-nombre');
-            jugadores = Array.from(inputs).map((inp, i) => ({
-                nombre: inp.value || `Jugador ${i + 1}`,
-                score: 0
-            }));
-            document.getElementById('setup-menu').style.display = 'none';
-            document.getElementById('jugador-actual').innerText = jugadores[indiceTurno].nombre;
-            init(); 
-        };
-    }
+    btnComenzar.onclick = () => {
+        const inputs = document.querySelectorAll('.input-nombre');
+        jugadores = Array.from(inputs).map(inp => ({ nombre: inp.value || "Jugador" }));
+        
+        // Activar Interfaz
+        document.getElementById('setup-menu').style.display = 'none';
+        document.getElementById('ui').style.display = 'block';
+        document.getElementById('panel-ruleta').style.display = 'flex';
+        
+        init();
+        iniciarTurnoCompleto();
+    };
+
+    btnGirar.onclick = () => {
+        btnGirar.disabled = true;
+        correrRuleta();
+    };
 });
 
 function init() {
-    scene = new THREE.Scene();
+    scene = new THREE.Scene(); 
     scene.background = new THREE.Color(0x050505);
     
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const width = window.innerWidth - 320; // Restamos el espacio del panel derecho
+    camera = new THREE.PerspectiveCamera(60, width / window.innerHeight, 0.1, 1000);
     camera.position.set(12, 10, 12);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 5, 0); 
-    controls.update();
-    
+    controls.target.set(0, 5, 0);
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    const geo = new THREE.BoxGeometry(3, 0.85, 1); 
 
+    const geo = new THREE.BoxGeometry(3, 0.85, 1);
     for (let f = 0; f < 15; f++) {
         let piso = [];
         for (let i = 0; i < 3; i++) {
-            const t = temas[Math.floor(Math.random()*4)];
-            const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: t.c }));
-            const edges = new THREE.EdgesGeometry(geo);
-            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
-            line.raycast = () => {}; 
-            mesh.add(line); 
-
+            const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: coloresTorre[Math.floor(Math.random()*4)] }));
+            const line = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x000000 }));
+            line.raycast = () => {}; mesh.add(line);
+            
             const offset = (i - 1) * 1.05;
-            if (f % 2 === 0) {
-                mesh.position.set(0, f * 0.9, offset);
-                mesh.userData.axis = 'x';
-            } else { 
-                mesh.position.set(offset, f * 0.9, 0); 
-                mesh.rotation.y = Math.PI/2; 
-                mesh.userData.axis = 'z';
-            }
+            if (f % 2 === 0) { mesh.position.set(0, f * 0.9, offset); mesh.userData.axis = 'x'; }
+            else { mesh.position.set(offset, f * 0.9, 0); mesh.rotation.y = Math.PI/2; mesh.userData.axis = 'z'; }
             
-            mesh.userData.friccion = Math.random() * (0.8 - 0.15) + 0.15;
-            mesh.userData.activo = true;
-            mesh.userData.tema = t.n;
+            // MECÁNICA: Sensibilidad/Fricción aleatoria
+            mesh.userData.friccion = Math.random() * (0.7 - 0.1) + 0.1;
+            mesh.userData.activo = true; 
             mesh.userData.centroOriginal = mesh.position.clone();
-            
-            scene.add(mesh);
-            piso.push(mesh);
+            scene.add(mesh); piso.push(mesh);
         }
         torre.push(piso);
     }
 
-    raycaster = new THREE.Raycaster();
-    mouse = new THREE.Vector2();
+    raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('resize', onWindowResize);
     animate();
+    dibujarRuleta(0);
 }
 
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+function dibujarRuleta(anguloActual) {
+    const canvas = document.getElementById('ruleta-canvas');
+    const ctx = canvas.getContext('2d');
+    const radio = canvas.width / 2;
+    const arco = (2 * Math.PI) / datosRuleta.length;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    datosRuleta.forEach((item, i) => {
+        const anguloInicio = anguloActual + i * arco;
+        ctx.beginPath(); ctx.fillStyle = item.color; ctx.moveTo(radio, radio);
+        ctx.arc(radio, radio, radio, anguloInicio, anguloInicio + arco); ctx.fill(); ctx.stroke();
+        
+        ctx.save(); ctx.translate(radio, radio); ctx.rotate(anguloInicio + arco / 2);
+        ctx.textAlign = "right"; ctx.fillStyle = "white"; ctx.font = "bold 12px Arial";
+        ctx.fillText(item.tema, radio - 10, 5); ctx.restore();
+    });
+}
+
+function correrRuleta() {
+    const texto = document.getElementById('ruleta-resultado-texto');
+    texto.innerText = "¡Girando...!";
+    let angulo = Math.random() * Math.PI;
+    let vel = 0.4 + Math.random() * 0.4; 
+    let fric = 0.96; // Ajuste para que dure menos (antes 0.985)
+
+    function anim() {
+        dibujarRuleta(angulo); angulo += vel; vel *= fric;
+        if (vel > 0.002) requestAnimationFrame(anim);
+        else {
+            const arco = (2 * Math.PI) / datosRuleta.length;
+            const ind = Math.floor((((1.5 * Math.PI - angulo) % (2 * Math.PI)) + (2 * Math.PI)) % (2 * Math.PI) / arco);
+            const tema = datosRuleta[ind].tema;
+            texto.innerText = `¡TEMA: ${tema}!`;
+            setTimeout(() => { lanzarPregunta(tema); }, 1000);
+        }
+    }
+    anim();
+}
+
+function iniciarTurnoCompleto() {
+    bloqueado = true;
+    const nombre = jugadores[indiceTurno].nombre;
+    document.getElementById('jugador-actual').innerText = nombre;
+    document.getElementById('anuncio-jugador').innerText = `Turno de: ${nombre}`;
+    const modalTurno = document.getElementById('modal-turno');
+    modalTurno.style.display = 'flex';
+    
+    setTimeout(() => { 
+        modalTurno.style.display = 'none'; 
+        document.getElementById('btn-girar').disabled = false;
+        document.getElementById('ruleta-resultado-texto').innerText = "¡Haz clic en Girar!";
+    }, 2000);
+}
+
+function lanzarPregunta(tema) {
+    const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === tema.toUpperCase());
+    const preg = filtradas[Math.floor(Math.random() * filtradas.length)];
+    const modal = document.getElementById('modal-pregunta');
+    modal.style.display = 'flex';
+    document.getElementById('tema-titulo').innerText = tema;
+    document.getElementById('texto-pregunta').innerText = preg.q;
+    const cont = document.getElementById('opciones-container'); cont.innerHTML = '';
+    
+    preg.options.forEach((opt, i) => {
+        const btn = document.createElement('button'); btn.className = 'option-btn'; btn.innerText = opt;
+        btn.onclick = () => {
+            modal.style.display = 'none';
+            if (i === preg.correct) {
+                mostrarNotificacion("¡Correcto!", "No sacas ficha. Siguiente turno.", true, () => {
+                    torre.flat().forEach(p => { if(p.userData.activo) p.position.copy(p.userData.centroOriginal); });
+                    indiceTurno = (indiceTurno + 1) % jugadores.length; 
+                    setTimeout(iniciarTurnoCompleto, 800);
+                });
+            } else {
+                mostrarNotificacion("¡Incorrecto!", "Debes sacar una ficha.", false, () => {
+                    necesitaSacarFicha = true; bloqueado = false;
+                });
+            }
+        };
+        cont.appendChild(btn);
+    });
 }
 
 function onPointerDown(e) {
-    if (perdido || bloqueado || e.button !== 0) return;
-    
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    if (perdido || bloqueado || !necesitaSacarFicha) return;
+    const width = window.innerWidth - 320;
+    mouse.x = (e.clientX / width) * 2 - 1; 
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    
     const hits = raycaster.intersectObjects(torre.flat());
     if (hits.length > 0 && hits[0].object.userData.activo) {
-        piezaSeleccionada = hits[0].object;
-        posicionInicialPieza.copy(piezaSeleccionada.position); 
+        piezaSeleccionada = hits[0].object; 
+        posicionAlClick.copy(piezaSeleccionada.position);
         controls.enabled = false;
-        
-        pNormal.copy(camera.position).normalize();
-        plane.setFromNormalAndCoplanarPoint(pNormal, piezaSeleccionada.position);
-        
-        if (raycaster.ray.intersectPlane(plane, pIntersect)) {
-            pOffset.copy(pIntersect).sub(piezaSeleccionada.position);
-        }
+        pNormal.copy(camera.position).normalize(); plane.setFromNormalAndCoplanarPoint(pNormal, piezaSeleccionada.position);
+        if (raycaster.ray.intersectPlane(plane, pIntersect)) pOffset.copy(pIntersect).sub(piezaSeleccionada.position);
     }
 }
 
 function onPointerMove(e) {
-    if (!piezaSeleccionada || bloqueado) return;
-
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    if (!piezaSeleccionada) return;
+    const width = window.innerWidth - 320;
+    mouse.x = (e.clientX / width) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-
     if (raycaster.ray.intersectPlane(plane, pIntersect)) {
         const move = pIntersect.clone().sub(pOffset);
-        
         if (piezaSeleccionada.userData.axis === 'x') {
-            const deltaX = move.x - posicionInicialPieza.x;
-            piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
+            const dx = move.x - posicionAlClick.x;
+            piezaSeleccionada.position.x = posicionAlClick.x + (dx * piezaSeleccionada.userData.friccion);
         } else {
-            const deltaZ = move.z - posicionInicialPieza.z;
-            piezaSeleccionada.position.z = posicionInicialPieza.z + (deltaZ * piezaSeleccionada.userData.friccion);
+            const dz = move.z - posicionAlClick.z;
+            piezaSeleccionada.position.z = posicionAlClick.z + (dz * piezaSeleccionada.userData.friccion);
         }
     }
 }
 
 function onPointerUp() {
-    if (bloqueado || !piezaSeleccionada) {
-        if (!bloqueado) controls.enabled = true;
-        return;
-    }
-
+    if (!piezaSeleccionada) return;
     const dist = piezaSeleccionada.position.distanceTo(piezaSeleccionada.userData.centroOriginal);
-    
     if (dist > 2.0) {
-        bloqueado = true;
-        const p = piezaSeleccionada;
-        piezaSeleccionada = null; 
-        lanzarCuestionario(p.userData.tema, p);
-    } else {
-        piezaSeleccionada = null;
-        controls.enabled = true;
-    }
+        piezaSeleccionada.visible = false; piezaSeleccionada.userData.activo = false; piezaSeleccionada.position.y = -500;
+        score++; document.getElementById('score').innerText = score;
+        necesitaSacarFicha = false; bloqueado = true;
+        validarEstabilidad(); 
+        if(!perdido) {
+            document.getElementById('btn-girar').disabled = false;
+            document.getElementById('ruleta-resultado-texto').innerText = "¡Gira otra vez!";
+        }
+    } 
+    piezaSeleccionada = null; controls.enabled = true;
 }
 
-// Función de notificación ajustada para recibir un callback (función a ejecutar después)
-function mostrarNotificacion(titulo, texto, esCorrecto, alTerminar) {
-    const modal = document.getElementById('modal-mensaje');
-    const content = modal.querySelector('.modal-content');
-    document.getElementById('mensaje-titulo').innerText = titulo;
-    document.getElementById('mensaje-texto').innerText = texto;
-    
-    content.style.backgroundColor = esCorrecto ? "#2ecc71" : "#e74c3c";
-    
-    modal.style.display = 'flex';
-    setTimeout(() => {
-        modal.style.display = 'none';
-        if (alTerminar) alTerminar(); // Ejecuta la siguiente acción (como cambiar de turno)
-    }, 2000);
-}
-
-function lanzarCuestionario(tema, pieza) {
-    const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === tema.toUpperCase());
-    const pregunta = filtradas[Math.floor(Math.random() * filtradas.length)];
-    const modal = document.getElementById('modal-pregunta');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    modal.style.display = 'flex';
-    modalContent.style.backgroundColor = 'white'; 
-    modalContent.style.color = '#333';
-    
-    document.getElementById('tema-titulo').innerText = pregunta.tema;
-    document.getElementById('texto-pregunta').innerText = pregunta.q;
-    
-    const container = document.getElementById('opciones-container');
-    container.innerHTML = '';
-
-    pregunta.options.forEach((opt, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.innerText = opt;
-        btn.onclick = (e) => {
-            e.stopPropagation(); 
-            const botones = container.querySelectorAll('button');
-            botones.forEach(b => b.style.pointerEvents = 'none');
-
-            if (i === pregunta.correct) {
-                modalContent.style.backgroundColor = '#2ecc71';
-                modalContent.style.color = 'white';
-                
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                    pieza.position.copy(pieza.userData.centroOriginal);
-                    bloqueado = false;
-                    controls.enabled = true;
-                    // Mostramos el mensaje y CUANDO TERMINE llamamos a cambiarTurno
-                    mostrarNotificacion("¡Correcto!", "La pieza ha regresado. ¡Siguiente jugador!", true, () => {
-                        cambiarTurno();
-                    });
-                }, 1000);
-
-            } else {
-                modalContent.style.backgroundColor = '#e74c3c';
-                modalContent.style.color = 'white';
-                
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                    pieza.visible = false;
-                    pieza.userData.activo = false;
-                    pieza.position.y = -500;
-                    score++;
-                    document.getElementById('score').innerText = score;
-                    
-                    bloqueado = false;
-                    controls.enabled = true;
-                    validarEstabilidad();
-                    
-                    if(!perdido) {
-                        // Mensaje específico pidiendo que siga sacando piezas
-                        mostrarNotificacion("¡Incorrecto!", "La pieza se ha perdido. ¡Debes seguir sacando piezas!", false);
-                    }
-                }, 1000);
-            }
-        };
-        container.appendChild(btn);
-    });
-}
-
-function cambiarTurno() {
-    indiceTurno = (indiceTurno + 1) % jugadores.length;
-    const proximo = jugadores[indiceTurno].nombre;
-    document.getElementById('anuncio-jugador').innerText = `Turno de: ${proximo}`;
-    
-    const modalTurno = document.getElementById('modal-turno');
-    modalTurno.style.display = 'flex';
-    
-    setTimeout(() => {
-        modalTurno.style.display = 'none';
-        document.getElementById('jugador-actual').innerText = proximo;
-    }, 1500);
+function mostrarNotificacion(tit, txt, ok, cb) {
+    const mod = document.getElementById('modal-mensaje');
+    document.getElementById('mensaje-titulo').innerText = tit;
+    document.getElementById('mensaje-texto').innerText = txt;
+    mod.querySelector('.modal-content').style.backgroundColor = ok ? "#2ecc71" : "#e74c3c";
+    mod.style.display = 'flex'; setTimeout(() => { mod.style.display = 'none'; if(cb) cb(); }, 1500);
 }
 
 function validarEstabilidad() {
     for (let f = 0; f < torre.length - 1; f++) {
-        const bloquesPiso = torre[f];
-        const activos = bloquesPiso.filter(b => b.userData.activo).length;
-        const centroActivo = bloquesPiso[1].userData.activo;
-        if (activos === 0 || (activos === 1 && !centroActivo)) {
-            derrumbe();
-            break;
+        const b = torre[f];
+        const activos = b.filter(x => x.userData.activo);
+        if (activos.length === 0 || (activos.length === 1 && !b[1].userData.activo)) {
+            perdido = true; document.getElementById('game-over').style.display = 'flex'; derrumbe();
         }
     }
 }
 
 function derrumbe() {
-    perdido = true;
-    bloqueado = true;
-    document.getElementById('game-over').style.display = 'flex';
-
     torre.flat().forEach(b => {
         if (!b.userData.activo) return;
-        const dirX = b.position.x + (Math.random() - 0.5) * 10;
-        const dirZ = b.position.z + (Math.random() - 0.5) * 10;
-
-        const caidaRapida = () => {
-            if (b.position.y > -20) {
-                b.position.y -= 0.5;
-                b.position.x += (dirX - b.position.x) * 0.05;
-                b.position.z += (dirZ - b.position.z) * 0.05;
-                b.rotation.x += 0.1;
-                b.rotation.y += 0.1;
-                b.rotation.z += 0.1;
-                requestAnimationFrame(caidaRapida);
-            } else {
-                b.visible = false;
-            }
-        };
-        caidaRapida();
+        const dx = b.position.x + (Math.random()-0.5)*10, dz = b.position.z + (Math.random()-0.5)*10;
+        const c = () => { if (b.position.y > -20) { b.position.y -= 0.5; b.position.x += (dx-b.position.x)*0.05; b.position.z += (dz-b.position.z)*0.05; b.rotation.x += 0.1; b.rotation.y += 0.1; requestAnimationFrame(c); } };
+        c();
     });
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    if (controls) controls.update(); 
-    renderer.render(scene, camera);
-}
+function animate() { requestAnimationFrame(animate); if(controls) controls.update(); renderer.render(scene, camera); }

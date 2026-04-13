@@ -1,118 +1,75 @@
-/* Reseteo general */
+/* Reseteo General */
 body, html { 
-    margin: 0; 
-    padding: 0; 
-    width: 100%; 
-    height: 100%; 
-    overflow: hidden; 
-    background: #050505; 
+    margin: 0; padding: 0; width: 100%; height: 100%; 
+    overflow: hidden; background: #050505; 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
     color: white; 
 }
 
-canvas { 
-    display: block; 
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 1;
-}
+/* Canvas del motor 3D */
+canvas { display: block; position: fixed; top: 0; left: 0; z-index: 1; }
 
-#ui { 
-    position: absolute; 
-    top: 20px; 
-    left: 20px; 
-    z-index: 10; 
-    pointer-events: none;
-}
-
+/* HUD Superior Izquierdo */
+#ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
 .legend { 
-    background: rgba(0, 0, 0, 0.85); 
-    padding: 15px; 
-    border-radius: 10px; 
-    border: 1px solid #f1c40f; 
-    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.85); padding: 20px; 
+    border-radius: 12px; border: 1px solid #f1c40f; pointer-events: auto; 
 }
 
-#modal-pregunta, #setup-menu, #game-over, #modal-turno, #modal-mensaje {
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%;
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 100;
+/* Panel Lateral Derecho (Ruleta) */
+#panel-ruleta {
+    position: fixed; right: 0; top: 0; width: 320px; height: 100%;
+    background: rgba(15, 15, 15, 0.95); border-left: 2px solid #f1c40f;
+    z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ruleta-container { text-align: center; width: 100%; }
+.ruleta-wrapper { 
+    position: relative; width: 250px; height: 250px; 
+    margin: 20px auto; display: flex; justify-content: center; align-items: center;
+}
+#ruleta-canvas { position: relative; border-radius: 50%; z-index: 5; }
+#ruleta-puntero {
+    position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0; border-left: 12px solid transparent;
+    border-right: 12px solid transparent; border-top: 22px solid #ffffff; z-index: 60;
 }
 
-#setup-menu { background: #050505; z-index: 300; }
-#modal-pregunta { background: rgba(0, 0, 0, 0.9); }
-#modal-turno { background: rgba(0, 0, 0, 0.5); pointer-events: none; }
-#modal-mensaje { background: rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 400; }
-#game-over { background: rgba(231, 76, 60, 0.9); flex-direction: column; }
-
+/* Diseño de Tarjetas (Modales) */
 .modal-content {
-    background: white; 
-    color: #333; 
-    padding: 30px; 
-    border-radius: 15px;
-    max-width: 450px; 
-    width: 90%; 
-    text-align: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: white; color: #333; padding: 40px; border-radius: 20px;
+    max-width: 420px; width: 90%; text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
 }
 
-/* Estilo para el modal de retroalimentación de respuestas */
-.mensaje-estilo {
-    color: white !important;
-    border: 4px solid white;
-    font-weight: bold;
+#setup-menu, #modal-pregunta, #modal-turno, #modal-mensaje, #game-over {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center; z-index: 100;
 }
+#setup-menu { background: #050505; z-index: 300; }
 
+/* Botones de Opciones */
 .option-btn {
-    display: block; 
-    width: 100%; 
-    margin: 10px 0; 
-    padding: 12px;
-    cursor: pointer; 
-    border: 2px solid #ddd; 
-    border-radius: 8px;
-    background: #f9f9f9; 
-    font-size: 16px; 
-    font-weight: bold;
+    display: block; width: 100%; margin: 12px 0; padding: 15px;
+    cursor: pointer; border: 2px solid #eee; border-radius: 10px;
+    background: #fdfdfd; font-size: 16px; font-weight: bold; color: #444;
     transition: all 0.2s ease;
 }
-
 .option-btn:hover { 
-    background: #3498db; 
-    color: white; 
-    border-color: #2980b9;
+    background: #3498db; color: white; border-color: #2980b9; 
+    transform: translateY(-2px);
 }
 
+/* Inputs y Botones de Control */
 .input-nombre {
-    display: block; 
-    width: 90%; 
-    margin: 10px auto; 
-    padding: 10px;
-    border-radius: 5px; 
-    border: 1px solid #ccc;
+    display: block; width: 85%; margin: 10px auto; padding: 12px;
+    border-radius: 8px; border: 1px solid #ccc; font-size: 16px;
 }
-
-#btn-comenzar, #game-over button {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 12px 25px;
-    font-size: 18px;
-    border-radius: 8px;
-    cursor: pointer;
+#btn-comenzar, #btn-girar, #game-over button {
+    background: #27ae60; color: white; border: none; padding: 15px 35px;
+    font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer;
 }
+#btn-girar { background: #f1c40f; color: black; width: 80%; }
+#btn-girar:disabled { background: #444; color: #777; cursor: not-allowed; }
 
-.transition { 
-    background: #f1c40f !important; 
-    color: #000 !important; 
-    border: 4px solid #000;
-}
-
-.hidden { display: none; }
+.transition { background: #f1c40f !important; color: #000 !important; border: 4px solid #000; }
+.mensaje-estilo { color: white !important; border: 4px solid white; font-weight: bold; }

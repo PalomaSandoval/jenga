@@ -8,7 +8,8 @@
 <body>
     <div id="setup-menu">
         <div class="modal-content">
-            <h1>Configuración de Partida</h1>
+            <h1>Jenga de la Calidad</h1>
+            <p>Configuración de la partida</p>
             <label>¿Cuántos jugadores?</label>
             <input type="number" id="num-jugadores" min="2" max="4" value="2">
             <div id="inputs-nombres"></div>
@@ -16,33 +17,43 @@
         </div>
     </div>
 
+    <div id="panel-ruleta" style="display: none;">
+        <div class="ruleta-container">
+            <h2>Ruleta de Temas</h2>
+            <div class="ruleta-wrapper">
+                <div id="ruleta-puntero"></div>
+                <canvas id="ruleta-canvas" width="250" height="250"></canvas>
+            </div>
+            <p id="ruleta-resultado-texto">¡Haz clic en Girar!</p>
+            <button id="btn-girar" disabled>GIRAR RULETA</button>
+        </div>
+    </div>
+
+    <div id="ui" style="display: none;">
+        <h1>Jenga de la Calidad</h1>
+        <div class="legend">
+            <p id="turno-display">Jugador: <span id="jugador-actual">-</span></p>
+            <p>Piezas fuera: <span id="score">0</span></p>
+        </div>
+    </div>
+
     <div id="modal-turno" style="display: none;">
         <div class="modal-content transition">
             <h2 id="anuncio-jugador">Es turno de...</h2>
-            <p>Prepárate para extraer una pieza</p>
         </div>
     </div>  
 
     <div id="modal-mensaje" style="display: none;">
         <div class="modal-content mensaje-estilo">
-            <h2 id="mensaje-titulo">¡Mensaje!</h2>
-            <p id="mensaje-texto">Descripción del mensaje</p>
-        </div>
-    </div>
-
-    <div id="ui">
-        <h1>Jenga de la Calidad</h1>
-        <div class="legend">
-            <p id="turno-display">Turno de: <span id="jugador-actual">-</span></p>
-            <p>🔴 CMMI | 🟡 Moprosoft | 🔵 PSP | 🟢 TSP</p>
-            <p>Piezas extraídas: <span id="score">0</span></p>
+            <h2 id="mensaje-titulo"></h2>
+            <p id="mensaje-texto"></p>
         </div>
     </div>
 
     <div id="modal-pregunta" style="display: none;">
         <div class="modal-content">
             <h2 id="tema-titulo">TEMA</h2>
-            <p id="texto-pregunta">Cargando desafío...</p>
+            <p id="texto-pregunta"></p>
             <div id="opciones-container"></div>
         </div>
     </div>
@@ -54,6 +65,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <script src="BancoPreguntas.js"></script> 
     <script src="jenga.js"></script>
 </body>
