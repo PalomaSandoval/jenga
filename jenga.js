@@ -99,7 +99,6 @@ function init() {
 
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
-    // Importante: escuchamos los eventos en el canvas para no interferir con el HTML
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
@@ -156,7 +155,6 @@ function onPointerMove(e) {
 }
 
 function onPointerUp() {
-    // Si ya estamos en una pregunta o no hay pieza, no hacemos nada
     if (bloqueado || !piezaSeleccionada) {
         if (!bloqueado) controls.enabled = true;
         return;
@@ -167,7 +165,7 @@ function onPointerUp() {
     if (dist > 1.8) {
         bloqueado = true;
         const p = piezaSeleccionada;
-        piezaSeleccionada = null; // Limpiamos la referencia inmediatamente para evitar duplicados
+        piezaSeleccionada = null; 
         lanzarCuestionario(p.userData.tema, p);
     } else {
         piezaSeleccionada.position.copy(posicionInicialPieza);
@@ -198,12 +196,11 @@ function lanzarCuestionario(tema, pieza) {
         btn.className = 'option-btn';
         btn.innerText = opt;
         btn.onclick = (e) => {
-            e.stopPropagation(); // Evita que el clic llegue al juego
+            e.stopPropagation(); 
             const botones = container.querySelectorAll('button');
             botones.forEach(b => b.style.pointerEvents = 'none');
 
             if (i === pregunta.correct) {
-                // BIEN: La pieza regresa (Comodín) y pasa el turno
                 modalContent.style.backgroundColor = '#2ecc71';
                 modalContent.style.color = 'white';
                 
@@ -216,7 +213,6 @@ function lanzarCuestionario(tema, pieza) {
                 }, 1500);
 
             } else {
-                // MAL: La pieza se quita y el jugador sigue intentando
                 modalContent.style.backgroundColor = '#e74c3c';
                 modalContent.style.color = 'white';
                 
@@ -256,12 +252,47 @@ function cambiarTurno() {
 
 function validarEstabilidad() {
     for (let f = 0; f < torre.length - 1; f++) {
-        const activas = torre[f].filter(b => b.userData.activo).length;
-        if (activas === 0) {
-            perdido = true;
-            document.getElementById('game-over').style.display = 'flex';
+        const bloquesPiso = torre[f];
+        const activos = bloquesPiso.filter(b => b.userData.activo).length;
+        // Se considera inestable si un piso está vacío o solo queda la pieza lateral sin el centro
+        const centroActivo = bloquesPiso[1].userData.activo;
+        if (activos === 0 || (activos === 1 && !centroActivo)) {
+            derrumbe();
+            break;
         }
     }
+}
+
+function derrumbe() {
+    perdido = true;
+    bloqueado = true;
+    document.getElementById('game-over').style.display = 'flex';
+
+    torre.flat().forEach(b => {
+        if (!b.userData.activo) return;
+
+        // Calcula una dirección de explosión desde la posición actual del bloque
+        const dirX = b.position.x + (Math.random() - 0.5) * 10;
+        const dirZ = b.position.z + (Math.random() - 0.5) * 10;
+
+        const caidaRapida = () => {
+            if (b.position.y > -20) {
+                b.position.y -= 0.5; // Velocidad de caída
+                b.position.x += (dirX - b.position.x) * 0.05; // Expansión lateral
+                b.position.z += (dirZ - b.position.z) * 0.05;
+
+                // Rotación en los tres ejes
+                b.rotation.x += 0.1;
+                b.rotation.y += 0.1;
+                b.rotation.z += 0.1;
+
+                requestAnimationFrame(caidaRapida);
+            } else {
+                b.visible = false;
+            }
+        };
+        caidaRapida();
+    });
 }
 
 function animate() {
