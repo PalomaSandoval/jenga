@@ -7,7 +7,8 @@ const temas = [
 
 let scene, camera, renderer, controls, raycaster, mouse;
 let torre = [], score = 0, perdido = false;
-let piezaSeleccionada = null, posicionInicialPieza = new THREE.Vector3();
+let piezaSeleccionada = null;
+let posicionInicialPieza = new THREE.Vector3(); // Posición original en el carril
 let jugadores = [];
 let indiceTurno = 0;
 let plane = new THREE.Plane();
@@ -89,8 +90,13 @@ function init() {
                 mesh.userData.axis = 'z';
             }
             
+            // MECÁNICA 1: SENSIBILIDAD (Fricción aleatoria)
+            mesh.userData.friccion = Math.random() * (0.8 - 0.15) + 0.15;
             mesh.userData.activo = true;
             mesh.userData.tema = t.n;
+            // Guardamos el centro original para que siempre sepa desde dónde se mide la distancia
+            mesh.userData.centroOriginal = mesh.position.clone();
+            
             scene.add(mesh);
             piso.push(mesh);
         }
@@ -122,6 +128,7 @@ function onPointerDown(e) {
     const hits = raycaster.intersectObjects(torre.flat());
     if (hits.length > 0 && hits[0].object.userData.activo) {
         piezaSeleccionada = hits[0].object;
+        // Posición desde donde empezamos a arrastrar en este clic
         posicionInicialPieza.copy(piezaSeleccionada.position); 
         controls.enabled = false;
         
@@ -143,14 +150,16 @@ function onPointerMove(e) {
 
     if (raycaster.ray.intersectPlane(plane, pIntersect)) {
         const move = pIntersect.clone().sub(pOffset);
+        
+        // MECÁNICA 1: Aplicar Fricción (Sensibilidad)
+        // La pieza se mueve solo una fracción de lo que se mueve el mouse
         if (piezaSeleccionada.userData.axis === 'x') {
-            piezaSeleccionada.position.x = move.x;
-            piezaSeleccionada.position.z = posicionInicialPieza.z;
+            const deltaX = move.x - posicionInicialPieza.x;
+            piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
         } else {
-            piezaSeleccionada.position.z = move.z;
-            piezaSeleccionada.position.x = posicionInicialPieza.x;
+            const deltaZ = move.z - posicionInicialPieza.z;
+            piezaSeleccionada.position.z = posicionInicialPieza.z + (deltaZ * piezaSeleccionada.userData.friccion);
         }
-        piezaSeleccionada.position.y = posicionInicialPieza.y;
     }
 }
 
@@ -160,15 +169,17 @@ function onPointerUp() {
         return;
     }
 
-    const dist = piezaSeleccionada.position.distanceTo(posicionInicialPieza);
+    // Medimos la distancia desde el CENTRO ORIGINAL de la torre
+    const dist = piezaSeleccionada.position.distanceTo(piezaSeleccionada.userData.centroOriginal);
     
-    if (dist > 1.8) {
+    if (dist > 2.0) {
         bloqueado = true;
         const p = piezaSeleccionada;
         piezaSeleccionada = null; 
         lanzarCuestionario(p.userData.tema, p);
     } else {
-        piezaSeleccionada.position.copy(posicionInicialPieza);
+        // MECÁNICA 2: PERSISTENCIA
+        // No devolvemos la pieza a su lugar. Simplemente soltamos.
         piezaSeleccionada = null;
         controls.enabled = true;
     }
@@ -177,7 +188,6 @@ function onPointerUp() {
 function lanzarCuestionario(tema, pieza) {
     const filtradas = bancoPreguntas.filter(p => p.tema.toUpperCase() === tema.toUpperCase());
     const pregunta = filtradas[Math.floor(Math.random() * filtradas.length)];
-    
     const modal = document.getElementById('modal-pregunta');
     const modalContent = modal.querySelector('.modal-content');
     
@@ -206,7 +216,8 @@ function lanzarCuestionario(tema, pieza) {
                 
                 setTimeout(() => {
                     modal.style.display = 'none';
-                    pieza.position.copy(posicionInicialPieza);
+                    // COMODÍN: Al acertar, la pieza regresa mágicamente a su lugar
+                    pieza.position.copy(pieza.userData.centroOriginal);
                     bloqueado = false;
                     controls.enabled = true;
                     cambiarTurno();
@@ -223,14 +234,10 @@ function lanzarCuestionario(tema, pieza) {
                     pieza.position.y = -500;
                     score++;
                     document.getElementById('score').innerText = score;
-                    
                     bloqueado = false;
                     controls.enabled = true;
                     validarEstabilidad();
-                    
-                    if(!perdido) {
-                        alert("Incorrecto. La pieza se ha perdido. Debes intentar con otra hasta acertar.");
-                    }
+                    if(!perdido) alert("Incorrecto. La pieza se ha perdido.");
                 }, 1500);
             }
         };
@@ -254,7 +261,6 @@ function validarEstabilidad() {
     for (let f = 0; f < torre.length - 1; f++) {
         const bloquesPiso = torre[f];
         const activos = bloquesPiso.filter(b => b.userData.activo).length;
-        // Se considera inestable si un piso está vacío o solo queda la pieza lateral sin el centro
         const centroActivo = bloquesPiso[1].userData.activo;
         if (activos === 0 || (activos === 1 && !centroActivo)) {
             derrumbe();
@@ -270,22 +276,17 @@ function derrumbe() {
 
     torre.flat().forEach(b => {
         if (!b.userData.activo) return;
-
-        // Calcula una dirección de explosión desde la posición actual del bloque
         const dirX = b.position.x + (Math.random() - 0.5) * 10;
         const dirZ = b.position.z + (Math.random() - 0.5) * 10;
 
         const caidaRapida = () => {
             if (b.position.y > -20) {
-                b.position.y -= 0.5; // Velocidad de caída
-                b.position.x += (dirX - b.position.x) * 0.05; // Expansión lateral
+                b.position.y -= 0.5;
+                b.position.x += (dirX - b.position.x) * 0.05;
                 b.position.z += (dirZ - b.position.z) * 0.05;
-
-                // Rotación en los tres ejes
                 b.rotation.x += 0.1;
                 b.rotation.y += 0.1;
                 b.rotation.z += 0.1;
-
                 requestAnimationFrame(caidaRapida);
             } else {
                 b.visible = false;
