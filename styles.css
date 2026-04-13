@@ -1,41 +1,30 @@
-body { margin: 0; overflow: hidden; font-family: sans-serif; background: #1a1a1a; }
+body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #050505; color: white; }
 
-#ui-container {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: white;
-    pointer-events: none;
-}
+#ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
+.legend { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border: 1px solid #f1c40f; pointer-events: auto; }
 
-#modal {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
+#modal-pregunta {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100;
 }
 
 .modal-content {
-    background: white;
-    padding: 30px;
-    border-radius: 15px;
-    max-width: 500px;
-    text-align: center;
+    background: white; color: #333; padding: 30px; border-radius: 15px;
+    max-width: 450px; width: 90%; text-align: center;
 }
+
+.option-btn {
+    display: block; width: 100%; margin: 10px 0; padding: 12px;
+    cursor: pointer; border: 2px solid #ddd; border-radius: 8px;
+    background: #f9f9f9; font-size: 16px; font-weight: bold;
+}
+
+.option-btn:hover { background: #3498db; color: white; }
 
 .hidden { display: none !important; }
 
-button {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    padding: 10px;
-    cursor: pointer;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+#game-over {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(231, 76, 60, 0.95); display: none; flex-direction: column; 
+    justify-content: center; align-items: center; z-index: 200;
 }
-
-button:hover { background: #f0f0f0; }
