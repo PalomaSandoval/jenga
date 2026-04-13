@@ -34,7 +34,7 @@ canvas {
     pointer-events: auto;
 }
 
-#modal-pregunta, #setup-menu, #game-over, #modal-turno {
+#modal-pregunta, #setup-menu, #game-over, #modal-turno, #modal-mensaje {
     position: fixed; 
     top: 0; 
     left: 0; 
@@ -49,6 +49,7 @@ canvas {
 #setup-menu { background: #050505; z-index: 300; }
 #modal-pregunta { background: rgba(0, 0, 0, 0.9); }
 #modal-turno { background: rgba(0, 0, 0, 0.5); pointer-events: none; }
+#modal-mensaje { background: rgba(0, 0, 0, 0.6); pointer-events: none; z-index: 400; }
 #game-over { background: rgba(231, 76, 60, 0.9); flex-direction: column; }
 
 .modal-content {
@@ -60,6 +61,13 @@ canvas {
     width: 90%; 
     text-align: center;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* Estilo para el modal de retroalimentación de respuestas */
+.mensaje-estilo {
+    color: white !important;
+    border: 4px solid white;
+    font-weight: bold;
 }
 
 .option-btn {
@@ -107,5 +115,4 @@ canvas {
     border: 4px solid #000;
 }
 
-/* Removido el !important para evitar bloqueos */
 .hidden { display: none; }

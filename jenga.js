@@ -8,7 +8,7 @@ const temas = [
 let scene, camera, renderer, controls, raycaster, mouse;
 let torre = [], score = 0, perdido = false;
 let piezaSeleccionada = null;
-let posicionInicialPieza = new THREE.Vector3(); // Posición original en el carril
+let posicionInicialPieza = new THREE.Vector3(); 
 let jugadores = [];
 let indiceTurno = 0;
 let plane = new THREE.Plane();
@@ -90,11 +90,9 @@ function init() {
                 mesh.userData.axis = 'z';
             }
             
-            // MECÁNICA 1: SENSIBILIDAD (Fricción aleatoria)
             mesh.userData.friccion = Math.random() * (0.8 - 0.15) + 0.15;
             mesh.userData.activo = true;
             mesh.userData.tema = t.n;
-            // Guardamos el centro original para que siempre sepa desde dónde se mide la distancia
             mesh.userData.centroOriginal = mesh.position.clone();
             
             scene.add(mesh);
@@ -128,7 +126,6 @@ function onPointerDown(e) {
     const hits = raycaster.intersectObjects(torre.flat());
     if (hits.length > 0 && hits[0].object.userData.activo) {
         piezaSeleccionada = hits[0].object;
-        // Posición desde donde empezamos a arrastrar en este clic
         posicionInicialPieza.copy(piezaSeleccionada.position); 
         controls.enabled = false;
         
@@ -151,8 +148,6 @@ function onPointerMove(e) {
     if (raycaster.ray.intersectPlane(plane, pIntersect)) {
         const move = pIntersect.clone().sub(pOffset);
         
-        // MECÁNICA 1: Aplicar Fricción (Sensibilidad)
-        // La pieza se mueve solo una fracción de lo que se mueve el mouse
         if (piezaSeleccionada.userData.axis === 'x') {
             const deltaX = move.x - posicionInicialPieza.x;
             piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
@@ -169,7 +164,6 @@ function onPointerUp() {
         return;
     }
 
-    // Medimos la distancia desde el CENTRO ORIGINAL de la torre
     const dist = piezaSeleccionada.position.distanceTo(piezaSeleccionada.userData.centroOriginal);
     
     if (dist > 2.0) {
@@ -178,11 +172,25 @@ function onPointerUp() {
         piezaSeleccionada = null; 
         lanzarCuestionario(p.userData.tema, p);
     } else {
-        // MECÁNICA 2: PERSISTENCIA
-        // No devolvemos la pieza a su lugar. Simplemente soltamos.
         piezaSeleccionada = null;
         controls.enabled = true;
     }
+}
+
+// Función de notificación ajustada para recibir un callback (función a ejecutar después)
+function mostrarNotificacion(titulo, texto, esCorrecto, alTerminar) {
+    const modal = document.getElementById('modal-mensaje');
+    const content = modal.querySelector('.modal-content');
+    document.getElementById('mensaje-titulo').innerText = titulo;
+    document.getElementById('mensaje-texto').innerText = texto;
+    
+    content.style.backgroundColor = esCorrecto ? "#2ecc71" : "#e74c3c";
+    
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.style.display = 'none';
+        if (alTerminar) alTerminar(); // Ejecuta la siguiente acción (como cambiar de turno)
+    }, 2000);
 }
 
 function lanzarCuestionario(tema, pieza) {
@@ -216,12 +224,14 @@ function lanzarCuestionario(tema, pieza) {
                 
                 setTimeout(() => {
                     modal.style.display = 'none';
-                    // COMODÍN: Al acertar, la pieza regresa mágicamente a su lugar
                     pieza.position.copy(pieza.userData.centroOriginal);
                     bloqueado = false;
                     controls.enabled = true;
-                    cambiarTurno();
-                }, 1500);
+                    // Mostramos el mensaje y CUANDO TERMINE llamamos a cambiarTurno
+                    mostrarNotificacion("¡Correcto!", "La pieza ha regresado. ¡Siguiente jugador!", true, () => {
+                        cambiarTurno();
+                    });
+                }, 1000);
 
             } else {
                 modalContent.style.backgroundColor = '#e74c3c';
@@ -234,11 +244,16 @@ function lanzarCuestionario(tema, pieza) {
                     pieza.position.y = -500;
                     score++;
                     document.getElementById('score').innerText = score;
+                    
                     bloqueado = false;
                     controls.enabled = true;
                     validarEstabilidad();
-                    if(!perdido) alert("Incorrecto. La pieza se ha perdido.");
-                }, 1500);
+                    
+                    if(!perdido) {
+                        // Mensaje específico pidiendo que siga sacando piezas
+                        mostrarNotificacion("¡Incorrecto!", "La pieza se ha perdido. ¡Debes seguir sacando piezas!", false);
+                    }
+                }, 1000);
             }
         };
         container.appendChild(btn);
@@ -249,12 +264,14 @@ function cambiarTurno() {
     indiceTurno = (indiceTurno + 1) % jugadores.length;
     const proximo = jugadores[indiceTurno].nombre;
     document.getElementById('anuncio-jugador').innerText = `Turno de: ${proximo}`;
-    document.getElementById('modal-turno').style.display = 'flex';
+    
+    const modalTurno = document.getElementById('modal-turno');
+    modalTurno.style.display = 'flex';
     
     setTimeout(() => {
-        document.getElementById('modal-turno').style.display = 'none';
+        modalTurno.style.display = 'none';
         document.getElementById('jugador-actual').innerText = proximo;
-    }, 1200);
+    }, 1500);
 }
 
 function validarEstabilidad() {
