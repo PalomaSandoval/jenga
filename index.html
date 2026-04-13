@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Jenga de la Calidad - Cámara Libre</title>
+    <title>Jenga de la Calidad - Modo Desafío</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #111; color: white; }
         #ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
@@ -23,7 +23,7 @@
     </div>
 
     <div id="controls-hint">
-        Click Izq: Girar | Click Derecho o Shift+Click: Mover vista | Ruedita: Zoom
+        Click Izq: Arrastrar | ⚠️ ¡Cuidado! Algunas piezas están muy apretadas | Click Derecho: Cámara
     </div>
 
     <div id="game-over">
@@ -44,6 +44,10 @@
         let torre = [];
         let score = 0;
         let perdido = false;
+        let piezaSeleccionada = null;
+        let planoInterseccion = new THREE.Plane();
+        let offsetArrastre = new THREE.Vector3();
+        let posicionInicialPieza = new THREE.Vector3();
 
         function init() {
             scene = new THREE.Scene();
@@ -56,13 +60,11 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // CONFIGURACIÓN DE CÁMARA MEJORADA
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true; 
             controls.dampingFactor = 0.05;
-            controls.enablePan = true; // ESTO PERMITE MOVER LA VISTA (DERECHO O SHIFT+IZQ)
-            controls.screenSpacePanning = true; // Facilita el movimiento vertical/horizontal
-            
+            controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const sun = new THREE.PointLight(0xffffff, 1.5);
             sun.position.set(10, 25, 10);
@@ -74,20 +76,25 @@
                 let pisoBloques = [];
                 for (let i = 0; i < 3; i++) {
                     const t = temas[Math.floor(Math.random()*4)];
-                    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: t.c }));
+                    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: t.c }));   
                     const edges = new THREE.EdgesGeometry(geo);
-                    const line = new THREE.LineSegments(
-                        edges, 
-                        new THREE.LineBasicMaterial({ color: 0x000000 })
-                    );
-                    line.raycast = () => {};   
+                    // El color del contorno de las piezas BLANCO: 0xffffff NEGRO: 0x000000
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff })); 
+                    line.raycast = () => {}; 
                     mesh.add(line); 
                     const offset = (i - 1) * 1.05;
-                    
                     if (f % 2 === 0) mesh.position.set(0, f * 0.9, offset);
                     else { mesh.position.set(offset, f * 0.9, 0); mesh.rotation.y = Math.PI/2; }
+
+                    // Aqui es para que algunas piezas random sean mas pesadas
+                    const friccion = Math.random() * (0.9 - 0.05) + 0.05;
+                    mesh.userData = { 
+                        piso: f, 
+                        activo: true, 
+                        axis: (f % 2 === 0 ? 'x' : 'z'),
+                        friccion: friccion 
+                    };
                     
-                    mesh.userData = { piso: f, index: i, puchones: 0, activo: true, axis: (f % 2 === 0 ? 'x' : 'z') };
                     scene.add(mesh);
                     pisoBloques.push(mesh);
                 }
@@ -97,56 +104,82 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
             
-            // Usamos pointerdown para no entrar en conflicto con el arrastre de cámara
             window.addEventListener('pointerdown', onPointerDown);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
             window.addEventListener('resize', onWindowResize);
             animate();
         }
 
-        let pointerPos = new THREE.Vector2();
-
+        // Esta función es para agarrar las piezas con el clic
         function onPointerDown(e) {
-            if (perdido || e.button !== 0) return; // Solo clic izquierdo para empujar
+            if (perdido || e.button !== 0) return;
             
-            pointerPos.x = e.clientX;
-            pointerPos.y = e.clientY;
-
-            // Al soltar el mouse, si no se movió mucho (no fue un giro de cámara), es un "push"
-            const onPointerUp = (eUp) => {
-                const moveDist = Math.hypot(eUp.clientX - pointerPos.x, eUp.clientY - pointerPos.y);
-                if (moveDist < 5) {
-                    processClick(eUp);
-                }
-                window.removeEventListener('pointerup', onPointerUp);
-            };
-            window.addEventListener('pointerup', onPointerUp);
-        }
-
-        function processClick(e) {
             mouse.x = (e.clientX/window.innerWidth)*2-1;
             mouse.y = -(e.clientY/window.innerHeight)*2+1;
             raycaster.setFromCamera(mouse, camera);
             
             const hits = raycaster.intersectObjects(torre.flat());
             if (hits.length > 0) {
-                empujar(hits[0].object);
+                piezaSeleccionada = hits[0].object;
+                controls.enabled = false;
+                // Aqui se guarda la posicion de la pieza mientras la van jalando y la sueltan
+                posicionInicialPieza.copy(piezaSeleccionada.position);
+                const normal = new THREE.Vector3(0, 1, 0); 
+                planoInterseccion.setFromNormalAndCoplanarPoint(normal, piezaSeleccionada.position);  
+                let puntoInterseccion = new THREE.Vector3();
+                raycaster.ray.intersectPlane(planoInterseccion, puntoInterseccion);              
+                offsetArrastre.copy(puntoInterseccion).sub(piezaSeleccionada.position);
             }
         }
 
-        function empujar(obj) {
-            const pushDist = 0.25; 
-            if (obj.userData.axis === 'x') obj.position.x += pushDist;
-            else obj.position.z += pushDist;
+        // Esta es la función apra arrastrar las piezas mantiendo el clic con el mouse y despues arrastrando
+        function onPointerMove(e) {
+            if (!piezaSeleccionada || perdido) return;
 
-            obj.userData.puchones++;
+            mouse.x = (e.clientX/window.innerWidth)*2-1;
+            mouse.y = -(e.clientY/window.innerHeight)*2+1;
+            raycaster.setFromCamera(mouse, camera);
 
-            if (obj.userData.puchones >= 6) {
-                obj.visible = false;
-                obj.userData.activo = false;
-                score++;
-                document.getElementById('score').innerText = score;
-                validarEstabilidad();
+            let puntoInterseccion = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(planoInterseccion, puntoInterseccion)) {        
+                // con esta es para ver cuanto se movio la pueza de la posicion original
+                const movimientoMouse = puntoInterseccion.sub(offsetArrastre);           
+                if (piezaSeleccionada.userData.axis === 'x') {
+                    const deltaX = movimientoMouse.x - posicionInicialPieza.x;
+                    piezaSeleccionada.position.x = posicionInicialPieza.x + (deltaX * piezaSeleccionada.userData.friccion);
+                } else {
+                    const deltaZ = movimientoMouse.z - posicionInicialPieza.z;
+                    piezaSeleccionada.position.z = posicionInicialPieza.z + (deltaZ * piezaSeleccionada.userData.friccion);
+                }
+                // aqui es para que se le asigne una sensibilidad dentro de un rango al azar a cada pieza, funciona entre menos sensibilidad es mas friccion
+                const dist = piezaSeleccionada.userData.axis === 'x' ? 
+                             Math.abs(piezaSeleccionada.position.x) : 
+                             Math.abs(piezaSeleccionada.position.z);
+
+                // 2.3 de sensibilidad para que no sea feo con piezas pesadas
+                if (dist > 2.3) {
+                    marcarPiezaComoFuera(piezaSeleccionada);
+                }
             }
+        }
+
+        //Esta es por si llegan a soltar el mouse 
+        function onPointerUp() {
+            piezaSeleccionada = null;
+            controls.enabled = true;
+        }
+
+        // y esta si dejan de mover la pieza
+        function marcarPiezaComoFuera(obj) {
+            if (!obj.userData.activo) return;
+            obj.visible = false;
+            obj.userData.activo = false;
+            obj.position.y = -100;
+            score++;
+            document.getElementById('score').innerText = score;
+            validarEstabilidad();
+            piezaSeleccionada = null;
         }
 
         function validarEstabilidad() {
@@ -166,8 +199,9 @@
             document.getElementById('game-over').style.display = 'flex';
             for (let f = pisoFalla; f < torre.length; f++) {
                 torre[f].forEach(b => {
-                    b.position.y -= 15;
-                    b.rotation.x += 0.7;
+                    b.position.y -= 5;
+                    b.rotation.x += 0.5;
+                    b.rotation.z += 0.3;
                 });
             }
         }
