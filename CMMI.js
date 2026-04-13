@@ -1,4 +1,4 @@
-export const preguntasCMMI = [
+const preguntasCMMI = [
     {
         id: 1,
         pregunta: "¿Qué significan las siglas CMMI?",
