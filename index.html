@@ -79,7 +79,7 @@
                     const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: t.c }));   
                     const edges = new THREE.EdgesGeometry(geo);
                     // El color del contorno de las piezas BLANCO: 0xffffff NEGRO: 0x000000
-                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff })); 
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 })); 
                     line.raycast = () => {}; 
                     mesh.add(line); 
                     const offset = (i - 1) * 1.05;
