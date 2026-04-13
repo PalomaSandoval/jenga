@@ -2,37 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Jenga de la Calidad - Modo Desafío</title>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #111; color: white; }
-        #ui { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-        .legend { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border: 1px solid #f1c40f; pointer-events: auto; }
-        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(231, 76, 60, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; }
-        button { width: 150px; padding: 10px; margin-top: 20px; cursor: pointer; border-radius: 5px; border: none; background: white; color: #333; font-weight: bold; }
-        #controls-hint { position: absolute; bottom: 20px; left: 20px; color: #888; font-size: 12px; pointer-events: none; }
-    </style>
+    <title>Jenga de la Calidad 3D</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
     <div id="ui">
         <h1>Jenga de la Calidad</h1>
         <div class="legend">
+            <p id="turno-display">Turno del Jugador: <span id="jugador-actual">1</span></p>
             <p>🔴 CMMI | 🟡 Moprosoft | 🔵 PSP | 🟢 TSP</p>
-            <p>Piezas fuera: <span id="score">0</span></p>
+            <p>Piezas extraídas: <span id="score">0</span></p>
         </div>
     </div>
 
-    <div id="controls-hint">
-        Click Izq: Arrastrar | ⚠️ ¡Cuidado! Algunas piezas están muy apretadas | Click Derecho: Cámara
+    <div id="modal-pregunta" class="hidden" style="display: none;">
+        <div class="modal-content">
+            <h2 id="tema-titulo">TEMA</h2>
+            <p id="texto-pregunta">Cargando desafío...</p>
+            <div id="opciones-container"></div>
+        </div>
     </div>
 
-    <div id="game-over">
-        <h1>¡LA TORRE SE CAYÓ!</h1>
+    <div id="game-over" class="hidden" style="display: none;">
+        <h1>¡TORRE COLAPSADA!</h1>
         <button onclick="location.reload()">Reiniciar</button>
     </div>
 
     <script type="importmap">
-        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+        { "imports": { 
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js", 
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" 
+        } }
     </script>
 
     <script type="module">
