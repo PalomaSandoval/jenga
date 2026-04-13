@@ -75,6 +75,12 @@
                 for (let i = 0; i < 3; i++) {
                     const t = temas[Math.floor(Math.random()*4)];
                     const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: t.c }));
+                    const edges = new THREE.EdgesGeometry(geo);
+                    const line = new THREE.LineSegments(
+                        edges, 
+                        new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }) // Contorno negro
+                    );
+                    mesh.add(line); 
                     const offset = (i - 1) * 1.05;
                     
                     if (f % 2 === 0) mesh.position.set(0, f * 0.9, offset);
