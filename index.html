@@ -33,7 +33,6 @@
         <h1>Jenga de la Calidad</h1>
         <div class="legend">
             <p id="turno-display">Jugador: <span id="jugador-actual">-</span></p>
-            <p>Piezas fuera: <span id="score">0</span></p>
         </div>
     </div>
 
@@ -60,6 +59,8 @@
 
     <div id="game-over" style="display: none;">
         <h1>¡TORRE COLAPSADA!</h1>
+        <h2 id="culpable-texto"></h2>
+        <p id="ganadores-texto"></p>
         <button onclick="location.reload()">Reiniciar</button>
     </div>
 

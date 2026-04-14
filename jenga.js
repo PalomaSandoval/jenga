@@ -7,7 +7,8 @@ const datosRuleta = [
 
 const coloresTorre = [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71];
 let scene, camera, renderer, controls, raycaster, mouse;
-let torre = [], score = 0, perdido = false;
+let torre = [], perdido = false;
+let piezasDescartadas = 0;
 let piezaSeleccionada = null, necesitaSacarFicha = false;
 let posicionAlClick = new THREE.Vector3(); 
 let jugadores = [], indiceTurno = 0;
@@ -66,7 +67,10 @@ function init() {
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 5, 0);
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(10, 20, 10);
+    scene.add(sun);
 
     const geo = new THREE.BoxGeometry(3, 0.85, 1);
     for (let f = 0; f < 15; f++) {
@@ -218,16 +222,31 @@ function onPointerUp() {
     if (!piezaSeleccionada) return;
     const dist = piezaSeleccionada.position.distanceTo(piezaSeleccionada.userData.centroOriginal);
     if (dist > 2.0) {
-        piezaSeleccionada.visible = false; piezaSeleccionada.userData.activo = false; piezaSeleccionada.position.y = -500;
-        score++; document.getElementById('score').innerText = score;
+        piezaSeleccionada.userData.activo = false;
+        apilarEnDescarte(piezaSeleccionada);
         necesitaSacarFicha = false; bloqueado = true;
-        validarEstabilidad(); 
+        validarEstabilidad();
         if(!perdido) {
             document.getElementById('btn-girar').disabled = false;
             document.getElementById('ruleta-resultado-texto').innerText = "¡Gira otra vez!";
         }
-    } 
+    }
     piezaSeleccionada = null; controls.enabled = true;
+}
+
+function apilarEnDescarte(pieza) {
+    const fila = Math.floor(piezasDescartadas / 3);
+    const posEnFila = piezasDescartadas % 3;
+    const offset = (posEnFila - 1) * 1.05;
+    const pisoGlobal = 15 + fila;
+    if (pisoGlobal % 2 === 0) {
+        pieza.position.set(0, pisoGlobal * 0.9, offset);
+        pieza.rotation.y = 0;
+    } else {
+        pieza.position.set(offset, pisoGlobal * 0.9, 0);
+        pieza.rotation.y = Math.PI / 2;
+    }
+    piezasDescartadas++;
 }
 
 function mostrarNotificacion(tit, txt, ok, cb) {
@@ -243,14 +262,20 @@ function validarEstabilidad() {
         const b = torre[f];
         const activos = b.filter(x => x.userData.activo);
         if (activos.length === 0 || (activos.length === 1 && !b[1].userData.activo)) {
-            perdido = true; document.getElementById('game-over').style.display = 'flex'; derrumbe();
+            perdido = true;
+            const culpable = jugadores[indiceTurno].nombre;
+            const ganadores = jugadores.filter((_, i) => i !== indiceTurno).map(j => j.nombre).join(', ');
+            document.getElementById('culpable-texto').innerText = `${culpable} tiró la torre`;
+            document.getElementById('ganadores-texto').innerText = ganadores ? `Ganan: ${ganadores}` : '';
+            document.getElementById('game-over').style.display = 'flex';
+            derrumbe();
+            return;
         }
     }
 }
 
 function derrumbe() {
     torre.flat().forEach(b => {
-        if (!b.userData.activo) return;
         const dx = b.position.x + (Math.random()-0.5)*10, dz = b.position.z + (Math.random()-0.5)*10;
         const c = () => { if (b.position.y > -20) { b.position.y -= 0.5; b.position.x += (dx-b.position.x)*0.05; b.position.z += (dz-b.position.z)*0.05; b.rotation.x += 0.1; b.rotation.y += 0.1; requestAnimationFrame(c); } };
         c();
