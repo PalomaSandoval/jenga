@@ -73,3 +73,62 @@ canvas { display: block; position: fixed; top: 0; left: 0; z-index: 1; }
 
 .transition { background: #f1c40f !important; color: #000 !important; border: 4px solid #000; }
 .mensaje-estilo { color: white !important; border: 4px solid white; font-weight: bold; }
+
+/* Pantalla de finalización de la partida */
+#game-over {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95); 
+    display: none; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 1000; 
+    text-align: center;
+}
+
+#game-over h1 { 
+    color: #e74c3c; 
+    font-size: 3.5rem; 
+    margin: 0; 
+    text-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+}
+
+#game-over h2 { 
+    color: #fff; 
+    font-size: 1.8rem; 
+    margin: 10px 0; 
+}
+
+#ganadores-texto { 
+    color: #2ecc71 !important;
+    font-size: 1.8rem; 
+    font-weight: bold;
+    margin-bottom: 30px; 
+    text-transform: uppercase;
+    /* Efecto de resplandor para que resalte más */
+    text-shadow: 0 0 10px rgba(46, 204, 113, 0.6), 0 0 20px rgba(46, 204, 113, 0.4);
+    background: rgba(46, 204, 113, 0.1);
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+#game-over button {
+    background: #e74c3c; 
+    color: white; 
+    border: none; 
+    padding: 15px 40px;
+    font-size: 1.2rem; 
+    font-weight: bold; 
+    border-radius: 50px; 
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+#game-over button:hover { 
+    transform: scale(1.1); 
+    background: #c0392b; 
+}
