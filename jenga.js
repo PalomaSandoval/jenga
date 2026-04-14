@@ -223,30 +223,17 @@ function onPointerUp() {
     const dist = piezaSeleccionada.position.distanceTo(piezaSeleccionada.userData.centroOriginal);
     if (dist > 2.0) {
         piezaSeleccionada.userData.activo = false;
-        apilarEnDescarte(piezaSeleccionada);
-        necesitaSacarFicha = false; bloqueado = true;
+        scene.remove(piezaSeleccionada);         
+        necesitaSacarFicha = false; 
+        bloqueado = true;
         validarEstabilidad();
+        
         if(!perdido) {
             document.getElementById('btn-girar').disabled = false;
             document.getElementById('ruleta-resultado-texto').innerText = "¡Gira otra vez!";
         }
     }
     piezaSeleccionada = null; controls.enabled = true;
-}
-
-function apilarEnDescarte(pieza) {
-    const fila = Math.floor(piezasDescartadas / 3);
-    const posEnFila = piezasDescartadas % 3;
-    const offset = (posEnFila - 1) * 1.05;
-    const pisoGlobal = 15 + fila;
-    if (pisoGlobal % 2 === 0) {
-        pieza.position.set(0, pisoGlobal * 0.9, offset);
-        pieza.rotation.y = 0;
-    } else {
-        pieza.position.set(offset, pisoGlobal * 0.9, 0);
-        pieza.rotation.y = Math.PI / 2;
-    }
-    piezasDescartadas++;
 }
 
 function mostrarNotificacion(tit, txt, ok, cb) {
