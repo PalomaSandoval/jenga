@@ -63,5 +63,12 @@ const bancoPreguntas = [
     // --- PSP (Preguntas base para que las piezas azules no estén vacías) ---
     { tema: "PSP", q: "¿Cuál es el objetivo de PSP?", options: ["Mejorar disciplina individual", "Gestión de hardware", "Ventas"], correct: 0 },
     { tema: "PSP", q: "¿Qué herramienta usa PSP para estimar?", options: ["PROBE", "Excel básico", "Cronómetro"], correct: 0 },
-    { tema: "PSP", q: "¿Qué registra el log de tiempos?", options: ["Interrupciones y tareas", "Solo errores", "Hora de comida"], correct: 0 }
+    { tema: "PSP", q: "¿Qué registra el log de tiempos?", options: ["Interrupciones y tareas", "Solo errores", "Hora de comida"], correct: 0 },
+    { tema: "PSP", q: "¿Quién es reconocido como el creador del Personal Software Process (PSP)?", options: ["Watts Humphrey", "Bill Gates", "Linus Torvalds"], correct: 0 },
+    { tema: "PSP", q: "¿Qué representa el 'Delta Time' (tiempo neto) en el registro de tiempo?", options: ["El tiempo bruto menos el tiempo de las interrupciones", "El tiempo que tarda en cargar el entorno de desarrollo", "Las horas extra no remuneradas"], correct: 0 },
+    { tema: "PSP", q: "¿Cómo se calcula habitualmente la densidad de defectos en PSP?", options: ["Defectos inyectados por cada 1000 líneas de código (KLOC)", "Defectos divididos por el número de programadores", "Horas totales trabajadas por cada defecto"], correct: 0 },
+    { tema: "PSP", q: "¿Por qué PSP enfatiza tanto la recolección de datos históricos?", options: ["Para justificar despidos de personal", "Para mejorar la precisión de las estimaciones futuras del ingeniero", "Para cumplir con requisitos legales de auditoría"], correct: 1 },
+    { tema: "PSP", q: "¿Qué es un PIP (Process Improvement Proposal) en PSP?", options: ["Un formato para registrar ideas y proponer mejoras al proceso personal", "Un protocolo de internet para transferir código", "Un lenguaje de programación orientado a objetos"], correct: 0 },
+    { tema: "PSP", q: "¿Cuál es la relación principal entre PSP y TSP (Team Software Process)?", options: ["Son metodologías mutuamente excluyentes", "TSP se basa en equipos formados por ingenieros capacitados en PSP", "TSP es para proyectos de hardware y PSP para software"], correct: 1 },
+    { tema: "PSP", q: "¿Cuál es la principal ventaja de realizar revisiones de código personales estructuradas?", options: ["Hacer que el código sea más extenso para cobrar más", "Es un método altamente eficiente para encontrar la mayoría de los defectos", "Evita tener que escribir documentación técnica"], correct: 1 }
 ];
